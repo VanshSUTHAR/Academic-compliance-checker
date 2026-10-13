@@ -36,7 +36,10 @@ from src.rules.default_rubrics import (
     get_rubric_by_name,
 )
 from src.rules.rubric_parser import parse_rubric_from_text
-from src.rules.schema import RubricRuleSet
+import importlib
+import src.ui.components
+importlib.reload(src.ui.components)
+
 from src.ui.components import (
     get_theme_css,
     render_hero_banner,
