@@ -1,0 +1,64 @@
+{
+  "rubric_id": "apa_college_std",
+  "title": "College Standard APA 7th Edition",
+  "description": "Standard college submission rules: APA 7th citation style, 12pt Times New Roman, 1-inch margins, double spaced.",
+  "formatting": {
+    "expected_font": "Times New Roman",
+    "allowed_fonts": ["Times New Roman", "Calibri", "Arial", "Georgia"],
+    "expected_font_size_pt": 12.0,
+    "font_size_tolerance_pt": 0.75,
+    "expected_margin_inches": 1.0,
+    "margin_tolerance_inches": 0.15,
+    "expected_line_spacing": 2.0,
+    "expected_page_size": "Letter",
+    "min_word_count": 400,
+    "max_word_count": 4000,
+    "min_page_count": 3,
+    "max_page_count": 12
+  },
+  "structure": {
+    "required_sections": [
+      "Abstract",
+      "Introduction",
+      "Methodology",
+      "Results",
+      "Discussion",
+      "Conclusion",
+      "References"
+    ],
+    "enforce_order": true,
+    "min_words_per_section": {
+      "Abstract": 100,
+      "Introduction": 150,
+      "Conclusion": 100
+    }
+  },
+  "citations": {
+    "citation_style": "APA",
+    "require_reference_list": true,
+    "min_references_count": 3,
+    "cross_reference_in_text": true
+  },
+  "metadata": {
+    "require_student_name": true,
+    "require_student_id": true,
+    "require_course_code": true,
+    "course_code_pattern": "[A-Z]{2,4}\\s*[-_]?\\s*\\d{3,4}",
+    "require_date": true,
+    "header_or_cover_only": true
+  },
+  "content_quality": {
+    "max_sentence_length_words": 35,
+    "forbidden_vague_words": [
+      "things",
+      "stuff",
+      "very good",
+      "obviously",
+      "a lot of",
+      "basically",
+      "bad"
+    ],
+    "min_lexical_diversity": 0.35,
+    "enable_llm_quality_review": false
+  }
+}

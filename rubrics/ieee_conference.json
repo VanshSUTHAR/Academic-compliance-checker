@@ -1,0 +1,61 @@
+{
+  "rubric_id": "ieee_conf_std",
+  "title": "IEEE Conference Proceedings Format",
+  "description": "Standard IEEE two-column paper format rules: IEEE numeric citations [1], 10pt Times New Roman, 0.75-inch margins, single spacing.",
+  "formatting": {
+    "expected_font": "Times New Roman",
+    "allowed_fonts": ["Times New Roman", "Times"],
+    "expected_font_size_pt": 10.0,
+    "font_size_tolerance_pt": 0.75,
+    "expected_margin_inches": 0.75,
+    "margin_tolerance_inches": 0.15,
+    "expected_line_spacing": 1.0,
+    "expected_page_size": "Letter",
+    "min_word_count": 1000,
+    "max_word_count": 6000,
+    "min_page_count": 2,
+    "max_page_count": 8
+  },
+  "structure": {
+    "required_sections": [
+      "Abstract",
+      "Introduction",
+      "Related Work",
+      "Methodology",
+      "Experimental Results",
+      "Conclusion",
+      "References"
+    ],
+    "enforce_order": true,
+    "min_words_per_section": {
+      "Abstract": 80,
+      "Introduction": 150
+    }
+  },
+  "citations": {
+    "citation_style": "IEEE",
+    "require_reference_list": true,
+    "min_references_count": 4,
+    "cross_reference_in_text": true
+  },
+  "metadata": {
+    "require_student_name": true,
+    "require_student_id": false,
+    "require_course_code": false,
+    "course_code_pattern": "",
+    "require_date": false,
+    "header_or_cover_only": true
+  },
+  "content_quality": {
+    "max_sentence_length_words": 35,
+    "forbidden_vague_words": [
+      "stuff",
+      "things",
+      "very good",
+      "nice",
+      "huge"
+    ],
+    "min_lexical_diversity": 0.38,
+    "enable_llm_quality_review": false
+  }
+}

@@ -1,0 +1,35 @@
+COURSE SUBMISSION RUBRIC GUIDELINES (CS-401 ADVANCED RESEARCH SEMINAR)
+
+1. General Formatting:
+- Body text must be written in 12pt Times New Roman font.
+- Margins must be exactly 1.0 inch (2.54 cm) on all four sides.
+- Double line spacing (2.0) must be applied throughout the entire document.
+- Submission word count must be between 2000 and 3500 words.
+- Expected page count is 4 to 8 pages.
+
+2. Document Structure:
+- The paper must strictly include the following sections in sequence:
+  1. Title Page / Header
+  2. Abstract (at least 150 words)
+  3. Introduction
+  4. Methodology
+  5. Results
+  6. Discussion
+  7. Conclusion
+  8. References
+
+3. Referencing and Citations:
+- All sources must strictly follow APA 7th Edition citation formatting.
+- Every in-text citation (e.g. Author, Year) must correspond to an entry in the References section.
+- Minimum of 4 peer-reviewed sources in the bibliography.
+
+4. Identification and Metadata:
+- The title page or document header must clearly display:
+  - Student Full Name
+  - Student Roll / ID Number (e.g., STU-2024-9876)
+  - Course Code (CS-401 or CS401)
+  - Date of Submission
+
+5. Writing Quality:
+- Avoid conversational language, vague terminology (e.g., 'stuff', 'things', 'obviously', 'a lot of').
+- Limit excessive run-on sentences (maximum 35 words per sentence).
