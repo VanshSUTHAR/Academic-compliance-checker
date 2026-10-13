@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 - **Project Name:** Academic Compliance Engine (ACE) / Report Compliance Checker
-- **Tech Stack:** Python 3.12, Streamlit, PyMuPDF (fitz), pdfplumber, python-docx, ReportLab, RapidFuzz, SQLite, OpenAI / Google Gemini Vision & LLMs
+- **Tech Stack:** Python 3.12, Streamlit, PyMuPDF (fitz), pdfplumber, python-docx, ReportLab, RapidFuzz, SQLite, Google Gemini Vision & LLMs
 - **Domain:** EdTech, Document Engineering, Natural Language Processing, Compliance Automation
 
 ---

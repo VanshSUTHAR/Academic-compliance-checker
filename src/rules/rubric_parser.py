@@ -205,18 +205,18 @@ def parse_guidelines_heuristically(text: str) -> RubricRuleSet:
     )
 
 def parse_rubric_from_text(text: str) -> RubricRuleSet:
-    """Master rubric conversion function trying LLM first, falling back to heuristics."""
-    if OPENAI_API_KEY:
+    """Master rubric conversion function trying Gemini first, falling back to heuristics."""
+    if GEMINI_API_KEY:
         try:
-            parsed = parse_guidelines_with_openai(text)
+            parsed = parse_guidelines_with_gemini(text)
             if parsed:
                 return parsed
         except Exception:
             pass
 
-    if GEMINI_API_KEY:
+    if OPENAI_API_KEY:
         try:
-            parsed = parse_guidelines_with_gemini(text)
+            parsed = parse_guidelines_with_openai(text)
             if parsed:
                 return parsed
         except Exception:

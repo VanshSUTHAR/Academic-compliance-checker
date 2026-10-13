@@ -22,6 +22,16 @@ def review_quality_with_llm(sample_text: str) -> List[Dict[str, str]]:
         f"Text excerpt:\n{sample_text[:1200]}"
     )
 
+    if GEMINI_API_KEY:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=GEMINI_API_KEY)
+            model = genai.GenerativeModel(GEMINI_MODEL)
+            resp = model.generate_content(prompt)
+            return [{"aspect": "Gemini Academic Tone Review", "feedback": resp.text or ""}]
+        except Exception:
+            pass
+
     if OPENAI_API_KEY:
         try:
             from openai import OpenAI
@@ -32,17 +42,7 @@ def review_quality_with_llm(sample_text: str) -> List[Dict[str, str]]:
                 max_tokens=250,
             )
             ans = resp.choices[0].message.content or ""
-            return [{"aspect": "LLM Academic Tone Review", "feedback": ans}]
-        except Exception:
-            pass
-
-    if GEMINI_API_KEY:
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel(GEMINI_MODEL)
-            resp = model.generate_content(prompt)
-            return [{"aspect": "LLM Academic Tone Review", "feedback": resp.text or ""}]
+            return [{"aspect": "Academic Tone Review", "feedback": ans}]
         except Exception:
             pass
 

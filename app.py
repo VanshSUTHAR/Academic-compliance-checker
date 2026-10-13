@@ -77,7 +77,7 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("System Status")
 col_s1, col_s2 = st.sidebar.columns(2)
 col_s1.metric("Database", "Active" if DATABASE_PATH.exists() else "Ready")
-llm_status = "Connected" if (OPENAI_API_KEY or GEMINI_API_KEY) else "Local Engine"
+llm_status = "Gemini Active" if GEMINI_API_KEY else ("OpenAI" if OPENAI_API_KEY else "Local Engine")
 col_s2.metric("AI Core", llm_status)
 
 # ----------------------------------------------------------------------
@@ -504,8 +504,8 @@ else:
     )
 
     col_k1, col_k2 = st.columns(2)
-    new_openai_key = col_k1.text_input("OpenAI API Key", value=OPENAI_API_KEY, type="password")
-    new_gemini_key = col_k2.text_input("Google Gemini API Key", value=GEMINI_API_KEY, type="password")
+    new_gemini_key = col_k1.text_input("Google Gemini API Key (Primary)", value=GEMINI_API_KEY, type="password")
+    new_openai_key = col_k2.text_input("OpenAI API Key (Optional Fallback)", value=OPENAI_API_KEY, type="password")
 
     st.markdown("#### 2. Layout & Formatting Tolerances")
     t_col1, t_col2 = st.columns(2)

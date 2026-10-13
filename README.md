@@ -89,8 +89,8 @@ student/
 pip install -r requirements.txt
 ```
 
-### 2. (Optional) Configure API Keys
-Copy `.env.example` to `.env` and add your OpenAI or Gemini key (only required for LLM-based qualitative review or vision OCR; the core deterministic engine runs completely offline):
+### 2. (Optional) Configure Google Gemini API Key
+Copy `.env.example` to `.env` and add your Google Gemini API key (optional; powers Vision OCR for scanned PDFs, automated syllabus parsing, and AI qualitative writing review, while the core deterministic engine runs completely offline):
 ```bash
 cp .env.example .env
 ```

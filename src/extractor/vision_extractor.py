@@ -74,21 +74,21 @@ def run_vision_ocr(images: List[Image.Image], filename: str = "scanned_doc.pdf")
     extracted_text = ""
     warnings = []
 
-    if OPENAI_API_KEY:
-        try:
-            extracted_text = extract_text_with_openai_vision(images)
-        except Exception as e:
-            warnings.append(f"OpenAI Vision failed: {e}")
-
-    if not extracted_text and GEMINI_API_KEY:
+    if GEMINI_API_KEY:
         try:
             extracted_text = extract_text_with_gemini_vision(images)
         except Exception as e:
             warnings.append(f"Gemini Vision failed: {e}")
 
+    if not extracted_text and OPENAI_API_KEY:
+        try:
+            extracted_text = extract_text_with_openai_vision(images)
+        except Exception as e:
+            warnings.append(f"OpenAI Vision failed: {e}")
+
     if not extracted_text:
-        warnings.append("No active Vision API key (OpenAI or Gemini) configured for scanned OCR. Please configure in Settings.")
-        extracted_text = "[SCANNED DOCUMENT: Vision API key required for full OCR]"
+        warnings.append("No active Vision API key (Gemini) configured for scanned OCR. Please configure in Settings.")
+        extracted_text = "[SCANNED DOCUMENT: Gemini Vision API key required for full OCR]"
 
     words = extracted_text.split()
     total_words = len(words)
