@@ -27,7 +27,7 @@ def review_quality_with_llm(sample_text: str) -> List[Dict[str, str]]:
             import google.generativeai as genai
             genai.configure(api_key=GEMINI_API_KEY)
             model = genai.GenerativeModel(GEMINI_MODEL)
-            resp = model.generate_content(prompt)
+            resp = model.generate_content(prompt, request_options={"timeout": 6.0})
             return [{"aspect": "Gemini Academic Tone Review", "feedback": resp.text or ""}]
         except Exception:
             pass

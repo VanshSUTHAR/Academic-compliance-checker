@@ -87,7 +87,10 @@ def parse_guidelines_with_gemini(text: str) -> Optional[RubricRuleSet]:
     import google.generativeai as genai
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel(GEMINI_MODEL)
-    response = model.generate_content(f"{LLM_PROMPT}\n\nAssignment Guidelines:\n\n{text}")
+    response = model.generate_content(
+        f"{LLM_PROMPT}\n\nAssignment Guidelines:\n\n{text}",
+        request_options={"timeout": 6.0},
+    )
     raw_content = response.text or "{}"
     raw_content = re.sub(r"^```json\s*", "", raw_content, flags=re.MULTILINE)
     raw_content = re.sub(r"```$", "", raw_content, flags=re.MULTILINE).strip()
