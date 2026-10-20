@@ -7,35 +7,24 @@ from streamlit.testing.v1 import AppTest
 APP_PATH = str(Path(__file__).resolve().parent.parent / "app.py")
 
 def test_streamlit_frontend_initial_render():
-    """Verify that app renders with default Dark Pro theme and no unhandled exceptions."""
+    """Verify that app renders with clean enterprise UI and no unhandled exceptions."""
     at = AppTest.from_file(APP_PATH, default_timeout=30)
     at.run()
     assert not at.exception, f"App encountered an exception during render: {at.exception}"
 
-    # Verify Sidebar components
-    assert len(at.sidebar.radio) >= 2
-    theme_radio = at.sidebar.radio[0]
-    assert "🌙 Dark Pro" in theme_radio.options
-    assert "☀️ Clean Light" in theme_radio.options
-
-    nav_radio = at.sidebar.radio[1]
+    # Verify Sidebar Navigation components
+    assert len(at.sidebar.radio) >= 1
+    nav_radio = at.sidebar.radio[0]
     assert "🔍 Compliance Checker" in nav_radio.options
     assert "🛠️ Rubric Studio" in nav_radio.options
     assert "📊 Audit History" in nav_radio.options
     assert "⚙️ Settings" in nav_radio.options
 
-def test_streamlit_frontend_theme_toggle():
-    """Verify toggling between Dark and Light mode renders successfully."""
+def test_streamlit_frontend_render_stability():
+    """Verify app renders with clean SaaS UI without unhandled exceptions."""
     at = AppTest.from_file(APP_PATH, default_timeout=30)
     at.run()
-
-    # Switch to Clean Light
-    at.sidebar.radio[0].set_value("☀️ Clean Light").run()
-    assert not at.exception, "Switching to Clean Light theme raised an exception"
-
-    # Switch back to Dark Pro
-    at.sidebar.radio[0].set_value("🌙 Dark Pro").run()
-    assert not at.exception, "Switching back to Dark Pro theme raised an exception"
+    assert not at.exception
 
 def test_streamlit_frontend_navigation_tabs():
     """Verify all navigation views render without crashing."""
@@ -43,15 +32,15 @@ def test_streamlit_frontend_navigation_tabs():
     at.run()
 
     # Rubric Studio view
-    at.sidebar.radio[1].set_value("🛠️ Rubric Studio").run()
+    at.sidebar.radio[0].set_value("🛠️ Rubric Studio").run()
     assert not at.exception, "Rubric Studio view crashed"
 
     # Audit History view
-    at.sidebar.radio[1].set_value("📊 Audit History").run()
+    at.sidebar.radio[0].set_value("📊 Audit History").run()
     assert not at.exception, "Audit History view crashed"
 
     # Settings view
-    at.sidebar.radio[1].set_value("⚙️ Settings").run()
+    at.sidebar.radio[0].set_value("⚙️ Settings").run()
     assert not at.exception, "Settings view crashed"
 
 def test_streamlit_frontend_run_compliance_audit():

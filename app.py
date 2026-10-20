@@ -1,11 +1,17 @@
-"""Assignment & Report Compliance Checker - Pro SaaS Streamlit Application."""
+"""Assignment & Report Compliance Checker - Enterprise Streamlit SaaS Application.
 
-import json
+High-trust, professional compliance auditing platform built with native Streamlit architecture.
+"""
+
+import importlib
 from io import BytesIO
+import json
 from pathlib import Path
 from typing import Optional
+
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as st_components
 
 from src.config import (
     BASE_DIR,
@@ -36,16 +42,20 @@ from src.rules.default_rubrics import (
     get_rubric_by_name,
 )
 from src.rules.rubric_parser import parse_rubric_from_text
-import importlib
-import src.ui.components
-importlib.reload(src.ui.components)
+from src.rules.schema import RubricRuleSet
+import src.ui.components as ui_components
+importlib.reload(ui_components)
 
 from src.ui.components import (
     get_theme_css,
+    render_finding_card,
     render_hero_banner,
     render_metric_card,
     render_score_showcase,
+    render_sidebar_brand,
+    render_sidebar_status_card,
     render_status_badge,
+    render_verdict_banner,
 )
 from src.validator.base import ComplianceReport, IssueSeverity, ValidationCategory
 from src.validator.engine import ComplianceValidator
@@ -61,174 +71,230 @@ st.set_page_config(
 # Initialize Database
 init_db()
 
-# Sidebar: Theme Switcher & Navigation
-st.sidebar.markdown("### 🎨 Theme Customization")
-theme_choice = st.sidebar.radio(
-    "Select Display Theme",
-    ["🌙 Dark Pro", "☀️ Clean Light"],
-    index=0,
-    horizontal=True,
-    key="theme_mode_selector",
+# ----------------------------------------------------------------------
+# SIDEBAR: Branding, Theme & Navigation
+# ----------------------------------------------------------------------
+st.sidebar.markdown(
+    render_sidebar_brand("Dimension", "Academic Pre-Flight Auditing"),
+    unsafe_allow_html=True,
 )
-current_theme = "dark" if "Dark" in theme_choice else "light"
 
-# Inject Dynamic Theme CSS
+# Design System & Theme Styling
+current_theme = "light"
 st.markdown(get_theme_css(current_theme), unsafe_allow_html=True)
 
-# Navigation
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🧭 Navigation & Modules")
+# Auto-expand sidebar if browser was left in a collapsed state
+st_components.html(
+    """
+    <script>
+    (function() {
+        try {
+            const pWin = window.parent;
+            for (let i = 0; i < pWin.localStorage.length; i++) {
+                const key = pWin.localStorage.key(i);
+                if (key && key.startsWith('stSidebarCollapsed')) {
+                    pWin.localStorage.removeItem(key);
+                }
+            }
+            const expandBtn = pWin.document.querySelector('[data-testid="stExpandSidebarButton"] button') ||
+                              pWin.document.querySelector('[data-testid="stExpandSidebarButton"]');
+            if (expandBtn) {
+                expandBtn.click();
+            }
+        } catch(e) {}
+    })();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
+
+st.sidebar.markdown('<div class="sidebar-section-title">Navigation</div>', unsafe_allow_html=True)
 nav_choice = st.sidebar.radio(
     "Go To Module",
     ["🔍 Compliance Checker", "🛠️ Rubric Studio", "📊 Audit History", "⚙️ Settings"],
     index=0,
+    label_visibility="collapsed",
 )
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### ⚡ System Telemetry")
-col_s1, col_s2 = st.sidebar.columns(2)
-col_s1.metric("Database", "SQLite Active")
-ai_status = f"Gemini Active" if GEMINI_API_KEY else ("OpenAI" if OPENAI_API_KEY else "Offline Heuristic")
-col_s2.metric("AI Engine", ai_status)
+ai_status = "Gemini Active" if GEMINI_API_KEY else ("OpenAI Fallback" if OPENAI_API_KEY else "Heuristic Core")
 
-# Top Hero Header Banner
+st.sidebar.markdown(
+    render_sidebar_status_card(
+        ai_status=ai_status,
+        rubrics_count=len(get_builtin_rubrics()),
+        db_status="SQLite Active",
+        theme=current_theme,
+    ),
+    unsafe_allow_html=True,
+)
+
+# Header Banner Bar
 st.markdown(render_hero_banner(current_theme), unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------
 # VIEW 1: COMPLIANCE CHECKER
 # ----------------------------------------------------------------------
 if nav_choice == "🔍 Compliance Checker":
-    st.markdown("### 🎯 Step-by-Step Submission Pre-Flight")
+    st.markdown("## 🎯 Pre-Flight Document Audit")
+    st.markdown(
+        "<p class='page-subtitle'>"
+        "Configure institutional rubric standards and submit document for automated deterministic verification."
+        "</p>",
+        unsafe_allow_html=True,
+    )
 
     col_rubric, col_doc = st.columns(2)
 
     # 1. Rubric Selection Slot
     with col_rubric:
-        st.markdown(
-            """
-            <div class="pro-card">
-                <div class="pro-card-header">
-                    <span style="font-size: 22px;">📋</span>
-                    <h3>Step 1: Submission Rubric Specification</h3>
+        with st.container(border=True):
+            st.markdown(
+                """
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="step-badge">STEP 1</span>
+                        <span class="step-title">Rubric Specification</span>
+                    </div>
+                    <span class="step-sub">Institutional Rules</span>
                 </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        rubric_source_mode = st.radio(
-            "Rubric Ingestion Method",
-            ["Preset Standard Rubrics", "Upload Custom Rubric (JSON / Syllabus Text)"],
-            horizontal=True,
-            key="rubric_mode",
-        )
-
-        active_rubric: Optional[RubricRuleSet] = None
-
-        if rubric_source_mode == "Preset Standard Rubrics":
-            available_rubrics = get_default_rubric_names()
-            selected_rubric_name = st.selectbox(
-                "Choose Standard Academic Rubric",
-                available_rubrics,
-                index=0,
+                """,
+                unsafe_allow_html=True,
             )
-            active_rubric = get_rubric_by_name(selected_rubric_name)
-            st.caption(f"ℹ️ {active_rubric.description}")
-        else:
-            uploaded_rubric_file = st.file_uploader(
-                "Drop Rubric File (JSON or Syllabus TXT)",
-                type=["json", "txt"],
-                key="rubric_uploader",
+            st.caption("Select institutional standard or upload custom course criteria.")
+
+            rubric_source_mode = st.radio(
+                "Rubric Ingestion Method",
+                ["Preset Standard Rubrics", "Upload Custom Rubric (JSON / Syllabus Text)"],
+                horizontal=True,
+                key="rubric_mode",
             )
-            if uploaded_rubric_file is not None:
-                content = uploaded_rubric_file.read().decode("utf-8", errors="ignore")
-                try:
-                    if uploaded_rubric_file.name.endswith(".json"):
-                        data = json.loads(content)
-                        active_rubric = RubricRuleSet(**data)
-                        st.success(f"Loaded JSON Rubric: {active_rubric.title}")
-                    else:
-                        with st.spinner("Gemini AI parsing guidelines into structured rule set..."):
-                            active_rubric = parse_rubric_from_text(content)
-                        st.success(f"Parsed Guidelines: {active_rubric.title}")
-                except Exception as e:
-                    st.error(f"Failed to parse rubric file: {e}")
-                    active_rubric = get_rubric_by_name("College Standard APA 7th Edition")
+
+            active_rubric: Optional[RubricRuleSet] = None
+
+            if rubric_source_mode == "Preset Standard Rubrics":
+                available_rubrics = get_default_rubric_names()
+                selected_rubric_name = st.selectbox(
+                    "Choose Standard Academic Rubric",
+                    available_rubrics,
+                    index=0,
+                )
+                active_rubric = get_rubric_by_name(selected_rubric_name)
+                st.caption(f"ℹ️ {active_rubric.description}")
             else:
-                active_rubric = get_rubric_by_name("College Standard APA 7th Edition")
-                st.info("No custom rubric uploaded yet. Defaulting to College Standard APA 7th.")
+                uploaded_rubric_file = st.file_uploader(
+                    "Drop Rubric File (JSON or Syllabus TXT)",
+                    type=["json", "txt"],
+                    key="rubric_uploader",
+                )
+                if uploaded_rubric_file is not None:
+                    content = uploaded_rubric_file.read().decode("utf-8", errors="ignore")
+                    try:
+                        if uploaded_rubric_file.name.endswith(".json"):
+                            data = json.loads(content)
+                            active_rubric = RubricRuleSet(**data)
+                            st.success(f"Loaded JSON Rubric: {active_rubric.title}")
+                        else:
+                            with st.spinner("Gemini AI parsing guidelines into structured rule set..."):
+                                active_rubric = parse_rubric_from_text(content)
+                            st.success(f"Parsed Guidelines: {active_rubric.title}")
+                    except Exception as e:
+                        st.error(f"Failed to parse rubric file: {e}")
+                        active_rubric = get_rubric_by_name("College Standard APA 7th Edition")
+                else:
+                    active_rubric = get_rubric_by_name("College Standard APA 7th Edition")
+                    st.info("No custom rubric uploaded yet. Defaulting to College Standard APA 7th.")
 
-        with st.expander("👁️ View Active Rubric Parameters"):
-            if active_rubric:
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.write(f"**Font:** {active_rubric.formatting.expected_font} ({active_rubric.formatting.expected_font_size_pt} pt)")
-                    st.write(f"**Margins:** {active_rubric.formatting.expected_margin_inches}\" (±{active_rubric.formatting.margin_tolerance_inches}\")")
-                    st.write(f"**Line Spacing:** {active_rubric.formatting.expected_line_spacing}x")
-                    st.write(f"**Word Count Bounds:** {active_rubric.formatting.min_word_count} - {active_rubric.formatting.max_word_count} words")
-                with c2:
-                    st.write(f"**Target Citation Style:** {active_rubric.citations.citation_style}")
-                    st.write(f"**Mandatory Sections:** {', '.join(active_rubric.structure.required_sections)}")
-                    st.write(f"**Enforce Sequence:** {'Strictly Enforced' if active_rubric.structure.enforce_order else 'Flexible'}")
-
-        st.markdown("</div>", unsafe_allow_html=True)
+            with st.expander("View Active Rubric Parameters", expanded=False):
+                if active_rubric:
+                    st.markdown(
+                        f"""
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; font-size: 12px; margin-top: 6px;">
+                            <div class="rubric-param-box">
+                                <span class="rubric-param-label">Typography</span>
+                                <span class="rubric-param-value">{active_rubric.formatting.expected_font} ({active_rubric.formatting.expected_font_size_pt} pt)</span>
+                            </div>
+                            <div class="rubric-param-box">
+                                <span class="rubric-param-label">Margins</span>
+                                <span class="rubric-param-value">{active_rubric.formatting.expected_margin_inches}&quot; (±{active_rubric.formatting.margin_tolerance_inches}&quot;)</span>
+                            </div>
+                            <div class="rubric-param-box">
+                                <span class="rubric-param-label">Line Spacing</span>
+                                <span class="rubric-param-value">{active_rubric.formatting.expected_line_spacing}x Spacing</span>
+                            </div>
+                            <div class="rubric-param-box">
+                                <span class="rubric-param-label">Word Bounds</span>
+                                <span class="rubric-param-value">{active_rubric.formatting.min_word_count} - {active_rubric.formatting.max_word_count}</span>
+                            </div>
+                            <div class="rubric-param-box" style="grid-column: span 2;">
+                                <span class="rubric-param-label">Citation &amp; Structure</span>
+                                <span class="rubric-param-value">{active_rubric.citations.citation_style} Style &bull; {len(active_rubric.structure.required_sections)} Mandatory Sections</span>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
     # 2. Assignment Upload Slot
     with col_doc:
-        st.markdown(
-            """
-            <div class="pro-card">
-                <div class="pro-card-header">
-                    <span style="font-size: 22px;">📄</span>
-                    <h3>Step 2: Upload Student Submission</h3>
+        with st.container(border=True):
+            st.markdown(
+                """
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="step-badge">STEP 2</span>
+                        <span class="step-title">Student Submission</span>
+                    </div>
+                    <span class="step-sub">PDF / Word DOCX</span>
                 </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
+            st.caption("Upload submission document or test with pre-configured samples.")
 
-        uploaded_doc_file = st.file_uploader(
-            "Upload Assignment Document (PDF or Word DOCX)",
-            type=["pdf", "docx"],
-            key="assignment_uploader",
-        )
+            uploaded_doc_file = st.file_uploader(
+                "Upload Assignment Document (PDF or Word DOCX)",
+                type=["pdf", "docx"],
+                key="assignment_uploader",
+            )
 
-        st.markdown("**— or test instantly with a pre-configured demo sample:**")
-        sample_choice = st.selectbox(
-            "Quick Demo Document Selector",
-            [
-                "None (Upload my own file)",
-                "Sample Conforming Paper (Passes APA) - PDF",
-                "Sample Non-Conforming Paper (Flags Violations) - PDF",
-                "Sample Conforming Paper - DOCX",
-                "Sample Non-Conforming Paper - DOCX",
-            ],
-        )
+            st.markdown("<p class='subtext-hint'>— or select a pre-configured sample document to test:</p>", unsafe_allow_html=True)
+            sample_choice = st.selectbox(
+                "Quick Demo Document Selector",
+                [
+                    "None (Upload my own file)",
+                    "Sample Conforming Paper (Passes APA) - PDF",
+                    "Sample Non-Conforming Paper (Flags Violations) - PDF",
+                    "Sample Conforming Paper - DOCX",
+                    "Sample Non-Conforming Paper - DOCX",
+                ],
+                index=0,
+            )
 
-        doc_bytes: Optional[bytes] = None
-        target_filename = "submission.pdf"
+            doc_bytes: Optional[bytes] = None
+            target_filename = "submission.pdf"
 
-        if uploaded_doc_file is not None:
-            doc_bytes = uploaded_doc_file.read()
-            target_filename = uploaded_doc_file.name
-            st.success(f"Ready: `{target_filename}` ({round(len(doc_bytes)/1024, 1)} KB)")
-        elif sample_choice != "None (Upload my own file)":
-            if "Conforming Paper (Passes APA) - PDF" in sample_choice:
-                target_filename = "sample_assignment_good.pdf"
-            elif "Non-Conforming Paper (Flags Violations) - PDF" in sample_choice:
-                target_filename = "sample_assignment_bad.pdf"
-            elif "Conforming Paper - DOCX" in sample_choice:
-                target_filename = "sample_assignment_good.docx"
-            else:
-                target_filename = "sample_assignment_bad.docx"
+            if uploaded_doc_file is not None:
+                doc_bytes = uploaded_doc_file.read()
+                target_filename = uploaded_doc_file.name
+                st.success(f"Ready: `{target_filename}` ({round(len(doc_bytes)/1024, 1)} KB)")
+            elif sample_choice != "None (Upload my own file)":
+                if "Conforming Paper (Passes APA) - PDF" in sample_choice:
+                    target_filename = "sample_assignment_good.pdf"
+                elif "Non-Conforming Paper (Flags Violations) - PDF" in sample_choice:
+                    target_filename = "sample_assignment_bad.pdf"
+                elif "Conforming Paper - DOCX" in sample_choice:
+                    target_filename = "sample_assignment_good.docx"
+                else:
+                    target_filename = "sample_assignment_bad.docx"
 
-            sample_file_path = SAMPLES_DIR / target_filename
-            if sample_file_path.exists():
-                doc_bytes = sample_file_path.read_bytes()
-                st.info(f"Loaded Sample: `{target_filename}`")
-
-        st.markdown("</div>", unsafe_allow_html=True)
+                sample_file_path = SAMPLES_DIR / target_filename
+                if sample_file_path.exists():
+                    doc_bytes = sample_file_path.read_bytes()
+                    st.info(f"Loaded Sample: `{target_filename}`")
 
     # Audit Launch Trigger
-    st.markdown("<br/>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
     col_btn, _ = st.columns([1, 2])
     run_audit_clicked = col_btn.button("🚀 Run Comprehensive Compliance Audit", type="primary", use_container_width=True)
 
@@ -270,118 +336,259 @@ if nav_choice == "🔍 Compliance Checker":
         extracted_doc: ExtractedDocument = st.session_state["last_extracted_doc"]
 
         # Results Dashboard
-        st.markdown("---")
-        st.markdown("## 📊 Executive Audit Report")
+        st.markdown("<hr/>", unsafe_allow_html=True)
+        st.markdown(f"## 📊 Executive Audit Report: `{report.filename}`")
+        st.caption(f"Evaluated against **{report.rubric_title}** &bull; Timestamp: {report.timestamp[:19].replace('T', ' ')} UTC")
 
-        # Circular SVG Score Showcase Banner
+        # Executive Verdict Callout Banner
         st.markdown(
-            render_score_showcase(
+            render_verdict_banner(
                 score=report.overall_score,
                 grade=report.letter_grade,
-                total_rules=report.total_rules,
-                passed_rules=report.passed_rules,
                 critical_count=report.critical_count,
-                theme=current_theme,
+                warning_count=report.warning_count,
+                filename=report.filename,
             ),
             unsafe_allow_html=True,
         )
 
-        # 5-Column High-End Metric Counters
-        m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
-        m_col1.markdown(render_metric_card("Total Rules", report.total_rules, "Evaluated", "#6366F1", current_theme), unsafe_allow_html=True)
-        m_col2.markdown(render_metric_card("Passed Rules", report.passed_rules, f"{round((report.passed_rules/report.total_rules)*100, 1)}% Pass Rate", "#10B981", current_theme), unsafe_allow_html=True)
-        m_col3.markdown(render_metric_card("Critical Flags", report.critical_count, "Grade Deductions", "#EF4444", current_theme), unsafe_allow_html=True)
-        m_col4.markdown(render_metric_card("Warnings", report.warning_count, "Inconsistencies", "#F59E0B", current_theme), unsafe_allow_html=True)
-        m_col5.markdown(render_metric_card("Style Tips", report.info_count, "Quality Polish", "#38BDF8", current_theme), unsafe_allow_html=True)
+        # Organize Results into Native Streamlit Tabs
+        res_tab1, res_tab2, res_tab3, res_tab4 = st.tabs([
+            "📊 Executive Summary",
+            "🛠️ Detailed Findings",
+            "🔍 Document Geometry",
+            "📥 Export Certificates",
+        ])
 
-        st.markdown("<br/>", unsafe_allow_html=True)
+        with res_tab1:
+            # Executive Scorecard Showcase
+            st.markdown(
+                render_score_showcase(
+                    score=report.overall_score,
+                    grade=report.letter_grade,
+                    total_rules=report.total_rules,
+                    passed_rules=report.passed_rules,
+                    critical_count=report.critical_count,
+                    theme=current_theme,
+                ),
+                unsafe_allow_html=True,
+            )
 
-        # Category Progress Cards
-        st.markdown("### 📈 Compliance Scores by Rubric Dimension")
-        cat_cols = st.columns(len(report.category_scores))
-        for idx, (cat_name, score) in enumerate(report.category_scores.items()):
-            with cat_cols[idx]:
-                st.write(f"**{cat_name}**")
-                st.progress(score / 100.0)
-                st.write(f"**{score}%**")
+            # 5-Column High-End Metric Counters
+            m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
+            m_col1.markdown(render_metric_card("Total Rules", report.total_rules, "Evaluated", "#4F46E5", current_theme), unsafe_allow_html=True)
+            m_col2.markdown(render_metric_card("Passed Rules", report.passed_rules, f"{round((report.passed_rules/report.total_rules)*100, 1)}% Pass Rate", "#15803D", current_theme), unsafe_allow_html=True)
+            m_col3.markdown(render_metric_card("Critical Flags", report.critical_count, "Grade Deductions", "#B91C1C", current_theme), unsafe_allow_html=True)
+            m_col4.markdown(render_metric_card("Warnings", report.warning_count, "Inconsistencies", "#B45309", current_theme), unsafe_allow_html=True)
+            m_col5.markdown(render_metric_card("Style Tips", report.info_count, "Quality Polish", "#0369A1", current_theme), unsafe_allow_html=True)
 
-        st.markdown("---")
+            st.markdown("<br/>", unsafe_allow_html=True)
 
-        # Actionable Findings & Filterable Issues Table
-        st.markdown("### 🛠️ Detailed Audit Findings & Corrective Actions")
-        filter_col, _ = st.columns([2, 3])
-        severity_filter = filter_col.selectbox(
-            "Filter Findings by Status",
-            ["All Issues", "Action Items Only (Critical & Warnings)", "Critical Issues Only", "Passed Checks Only"],
-        )
+            # Category Dimension Progress Cards
+            st.markdown("### 📈 Rubric Dimension Breakdown")
+            cat_cols = st.columns(len(report.category_scores))
+            is_dark_theme = current_theme == "dark"
+            for idx, (cat_name, score) in enumerate(report.category_scores.items()):
+                with cat_cols[idx]:
+                    if is_dark_theme:
+                        score_color = "#4ADE80" if score >= 85 else ("#FBBF24" if score >= 70 else "#F87171")
+                    else:
+                        score_color = "#15803D" if score >= 85 else ("#B45309" if score >= 70 else "#B91C1C")
+                    st.markdown(
+                        f'<div class="dimension-card"><div class="dimension-title"><span>{cat_name}</span><span class="dimension-score" style="color: {score_color};">{round(score, 1)}%</span></div></div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.progress(score / 100.0)
 
-        filtered_issues = report.issues
-        if severity_filter == "Action Items Only (Critical & Warnings)":
-            filtered_issues = [iss for iss in report.issues if not iss.passed]
-        elif severity_filter == "Critical Issues Only":
-            filtered_issues = [iss for iss in report.issues if not iss.passed and iss.severity == IssueSeverity.CRITICAL]
-        elif severity_filter == "Passed Checks Only":
-            filtered_issues = [iss for iss in report.issues if iss.passed]
+        with res_tab2:
+            st.markdown("### 🛠️ Detailed Audit Findings & Corrective Actions")
+            filter_col, _ = st.columns([2, 3])
+            severity_filter = filter_col.selectbox(
+                "Filter Findings by Status",
+                ["All Issues", "Action Items Only (Critical & Warnings)", "Critical Issues Only", "Passed Checks Only"],
+            )
 
-        table_rows = []
-        for iss in filtered_issues:
-            status_symbol = "✅ PASS" if iss.passed else f"❌ {iss.severity.value}"
-            table_rows.append({
-                "Rule": iss.rule_name,
-                "Category": iss.category.value,
-                "Status": status_symbol,
-                "Document Measurement": iss.actual,
-                "Required by Rubric": iss.expected,
-                "Actionable Fix": iss.suggested_fix,
-            })
+            filtered_issues = report.issues
+            if severity_filter == "Action Items Only (Critical & Warnings)":
+                filtered_issues = [iss for iss in report.issues if not iss.passed]
+            elif severity_filter == "Critical Issues Only":
+                filtered_issues = [iss for iss in report.issues if not iss.passed and iss.severity == IssueSeverity.CRITICAL]
+            elif severity_filter == "Passed Checks Only":
+                filtered_issues = [iss for iss in report.issues if iss.passed]
 
-        if table_rows:
-            st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
-        else:
-            st.success("🎉 No issues match your filter criteria!")
+            if filtered_issues:
+                # Render Individual Finding Diagnosis Cards
+                for iss in filtered_issues:
+                    st.markdown(
+                        render_finding_card(
+                            rule_name=iss.rule_name,
+                            category=iss.category.value,
+                            actual=iss.actual,
+                            expected=iss.expected,
+                            fix=iss.suggested_fix,
+                            severity=iss.severity.value,
+                            passed=iss.passed,
+                            theme=current_theme,
+                        ),
+                        unsafe_allow_html=True,
+                    )
 
-        # Document Inspector Preview
-        with st.expander("🔍 Deep Document Layout & Physical Geometry Inspector"):
-            di_col1, di_col2 = st.columns(2)
-            with di_col1:
-                st.markdown("**Physical Geometry & Typography**")
-                st.write(f"- **Dominant Font Family:** `{extracted_doc.dominant_font}`")
-                st.write(f"- **Dominant Font Size:** `{extracted_doc.dominant_font_size_pt} pt`")
-                st.write(f"- **Detected Line Spacing:** `{extracted_doc.detected_line_spacing}x`")
-                st.write(f"- **Paper Format:** `{extracted_doc.page_size_label}`")
-                st.write(f"- **Physical Margins (inches):** Top: `{extracted_doc.avg_margins['top']}\"`, Bottom: `{extracted_doc.avg_margins['bottom']}\"`, Left: `{extracted_doc.avg_margins['left']}\"`, Right: `{extracted_doc.avg_margins['right']}\"`")
-            with di_col2:
-                st.markdown("**Structural Overview**")
-                st.write(f"- **Total Word Count:** `{extracted_doc.total_word_count}` words")
-                st.write(f"- **Page Count:** `{extracted_doc.page_count}` pages")
-                st.write(f"- **Identified Headings:** `{', '.join(s.heading for s in extracted_doc.sections) if extracted_doc.sections else 'None detected'}`")
-                st.write(f"- **Scanned Image Check:** `{'Scanned (Vision OCR)' if extracted_doc.is_scanned else 'Native Text Layer'}`")
+                # Optional Raw Data Table Expander for users who want tabular view
+                with st.expander("📊 View Raw Findings Data Table", expanded=False):
+                    table_rows = []
+                    for iss in filtered_issues:
+                        status_symbol = "PASS" if iss.passed else iss.severity.value
+                        table_rows.append({
+                            "Rule": iss.rule_name,
+                            "Category": iss.category.value,
+                            "Status": status_symbol,
+                            "Document Measurement": iss.actual,
+                            "Required by Rubric": iss.expected,
+                            "Actionable Fix": iss.suggested_fix,
+                        })
+                    st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
+            else:
+                st.success("🎉 No issues match your filter criteria!")
 
-        # Download Report Buttons
-        st.markdown("---")
-        st.markdown("### 📥 Export Audit Certificates")
-        col_dl1, col_dl2, _ = st.columns([1, 1, 2])
-        col_dl1.download_button(
-            label="📄 Download PDF Audit Certificate",
-            data=st.session_state["last_pdf_bytes"],
-            file_name=f"compliance_audit_{report.filename}.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-        )
-        col_dl2.download_button(
-            label="💾 Export JSON Data",
-            data=st.session_state["last_json_str"],
-            file_name=f"compliance_audit_{report.filename}.json",
-            mime="application/json",
-            use_container_width=True,
-        )
+        with res_tab3:
+            st.markdown("### 🔍 Deep Document Layout & Physical Geometry Inspector")
+            g_col1, g_col2 = st.columns(2)
+
+            with g_col1:
+                with st.container(border=True):
+                    st.markdown("#### 📐 Typography & Spacing Metrics")
+                    st.markdown(
+                        f"""
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; margin-top: 8px;">
+                            <div class="metric-sub-card">
+                                <span class="metric-sub-label">Dominant Font</span>
+                                <span class="metric-sub-value">{extracted_doc.dominant_font}</span>
+                            </div>
+                            <div class="metric-sub-card">
+                                <span class="metric-sub-label">Font Size</span>
+                                <span class="metric-sub-value">{extracted_doc.dominant_font_size_pt} pt</span>
+                            </div>
+                            <div class="metric-sub-card">
+                                <span class="metric-sub-label">Line Spacing</span>
+                                <span class="metric-sub-value">{extracted_doc.detected_line_spacing}x Multiple</span>
+                            </div>
+                            <div class="metric-sub-card">
+                                <span class="metric-sub-label">Paper Format</span>
+                                <span class="metric-sub-value">{extracted_doc.page_size_label}</span>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                with st.container(border=True):
+                    st.markdown("#### 📏 Physical Margins Geometry (Inches)")
+                    st.markdown(
+                        f"""
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 12px; margin-top: 8px; text-align: center;">
+                            <div class="metric-sub-card" style="padding: 8px 6px;">
+                                <span class="metric-sub-label">Top</span>
+                                <span class="metric-sub-value">{extracted_doc.avg_margins['top']}&quot;</span>
+                            </div>
+                            <div class="metric-sub-card" style="padding: 8px 6px;">
+                                <span class="metric-sub-label">Bottom</span>
+                                <span class="metric-sub-value">{extracted_doc.avg_margins['bottom']}&quot;</span>
+                            </div>
+                            <div class="metric-sub-card" style="padding: 8px 6px;">
+                                <span class="metric-sub-label">Left</span>
+                                <span class="metric-sub-value">{extracted_doc.avg_margins['left']}&quot;</span>
+                            </div>
+                            <div class="metric-sub-card" style="padding: 8px 6px;">
+                                <span class="metric-sub-label">Right</span>
+                                <span class="metric-sub-value">{extracted_doc.avg_margins['right']}&quot;</span>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            with g_col2:
+                with st.container(border=True):
+                    st.markdown("#### 📚 Structural Overview & Hierarchy")
+                    s_c1, s_c2 = st.columns(2)
+                    s_c1.metric("Total Word Count", f"{extracted_doc.total_word_count:,}")
+                    s_c2.metric("Page Count", f"{extracted_doc.page_count} Pages")
+
+                    st.markdown("<div class='doc-heading-title'>Detected Headings:</div>", unsafe_allow_html=True)
+                    if extracted_doc.sections:
+                        headings_html = " ".join([f"<span class='metric-sub-badge'>{s.heading}</span>" for s in extracted_doc.sections])
+                        st.markdown(f"<div style='margin-top: 4px;'>{headings_html}</div>", unsafe_allow_html=True)
+                    else:
+                        st.caption("No explicit section headings detected.")
+
+                with st.container(border=True):
+                    st.markdown("#### 🔍 Text Layer & Image Integrity")
+                    ocr_status = "Vision OCR Layer (Scanned Document)" if extracted_doc.is_scanned else "Native Digital Text Layer (Accessible)"
+                    if current_theme == "dark":
+                        ocr_color = "#FBBF24" if extracted_doc.is_scanned else "#4ADE80"
+                    else:
+                        ocr_color = "#B45309" if extracted_doc.is_scanned else "#15803D"
+                    st.markdown(
+                        f"""
+                        <div class="ocr-status-box">
+                            <span class="metric-sub-label">Text Layer Format</span>
+                            <span style="font-weight: 600; color: {ocr_color};">{ocr_status}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+        with res_tab4:
+            st.markdown("### 📥 Export Audit Certificates & Metadata")
+            with st.container(border=True):
+                st.markdown(
+                    f"""
+                    <div class="cert-header-box">
+                        <div>
+                            <span class="cert-badge">OFFICIAL REPORT</span>
+                            <h4 style="margin: 6px 0 2px 0;">Compliance Audit Certificate: {report.filename}</h4>
+                            <span class="cert-sub">Audit ID: {report.rubric_title.lower().replace(' ', '_')}_{report.file_type} &bull; Score: {report.overall_score}% &bull; Grade: {report.letter_grade}</span>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            c_dl1, c_dl2 = st.columns(2)
+            with c_dl1:
+                with st.container(border=True):
+                    st.markdown("#### 📄 Download PDF Certificate")
+                    st.caption("Official authenticated PDF report with score summary and violation breakdown for course instructors.")
+                    st.download_button(
+                        label="📄 Download PDF Audit Certificate",
+                        data=st.session_state["last_pdf_bytes"],
+                        file_name=f"compliance_audit_{report.filename}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True,
+                    )
+            with c_dl2:
+                with st.container(border=True):
+                    st.markdown("#### 💾 Export Raw JSON Data")
+                    st.caption("Full machine-readable telemetry JSON for integration with LMS platforms or automated pipelines.")
+                    st.download_button(
+                        label="💾 Export JSON Data",
+                        data=st.session_state["last_json_str"],
+                        file_name=f"compliance_audit_{report.filename}.json",
+                        mime="application/json",
+                        use_container_width=True,
+                    )
 
 # ----------------------------------------------------------------------
 # VIEW 2: RUBRIC STUDIO
 # ----------------------------------------------------------------------
 elif nav_choice == "🛠️ Rubric Studio":
     st.markdown("## 🛠️ Course Rubric Studio")
-    st.markdown("Design, customize, or generate JSON submission rubrics from syllabus text using Google Gemini.")
+    st.markdown(
+        "<p class='page-subtitle'>"
+        "Design, customize, or generate JSON submission rubrics from syllabus text using Google Gemini."
+        "</p>",
+        unsafe_allow_html=True,
+    )
 
     studio_mode = st.radio(
         "Studio Action",
@@ -455,7 +662,7 @@ elif nav_choice == "🛠️ Rubric Studio":
                     content_quality=base_rubric.content_quality,
                 )
                 custom_json = updated_rubric.model_dump_json(indent=2)
-                st.success(f"Custom rubric '{rub_title}' compiled!")
+                st.success(f"Custom rubric '{rub_title}' compiled successfully!")
                 st.download_button(
                     "📥 Download Custom Rubric JSON",
                     data=custom_json,
@@ -498,14 +705,19 @@ elif nav_choice == "🛠️ Rubric Studio":
 # ----------------------------------------------------------------------
 elif nav_choice == "📊 Audit History":
     st.markdown("## 📊 Past Submissions & Compliance History")
-    st.markdown("Track your compliance score improvements across document revisions in SQLite.")
+    st.markdown(
+        "<p class='page-subtitle'>"
+        "Track compliance score improvements and audit records logged in the local SQLite database."
+        "</p>",
+        unsafe_allow_html=True,
+    )
 
     stats = get_audit_statistics()
     h_col1, h_col2, h_col3, h_col4 = st.columns(4)
-    h_col1.markdown(render_metric_card("Total Audits Run", stats["total_audits"], "Logged", "#6366F1", current_theme), unsafe_allow_html=True)
-    h_col2.markdown(render_metric_card("Historical Avg Score", f"{stats['avg_score']}%", "Average", "#10B981", current_theme), unsafe_allow_html=True)
-    h_col3.markdown(render_metric_card("Highest Score", f"{stats['max_score']}%", "Peak", "#38BDF8", current_theme), unsafe_allow_html=True)
-    h_col4.markdown(render_metric_card("Total Passed Rules", stats["total_passed_rules"], "Cumulative", "#8B5CF6", current_theme), unsafe_allow_html=True)
+    h_col1.markdown(render_metric_card("Total Audits Run", stats["total_audits"], "Logged Audits", "#4F46E5", current_theme), unsafe_allow_html=True)
+    h_col2.markdown(render_metric_card("Historical Avg Score", f"{stats['avg_score']}%", "Average", "#15803D", current_theme), unsafe_allow_html=True)
+    h_col3.markdown(render_metric_card("Highest Score", f"{stats['max_score']}%", "Peak Score", "#0369A1", current_theme), unsafe_allow_html=True)
+    h_col4.markdown(render_metric_card("Total Passed Rules", stats["total_passed_rules"], "Cumulative", "#6366F1", current_theme), unsafe_allow_html=True)
 
     st.markdown("<br/>", unsafe_allow_html=True)
 
@@ -527,12 +739,14 @@ elif nav_choice == "📊 Audit History":
             })
         st.dataframe(pd.DataFrame(history_table), use_container_width=True, hide_index=True)
 
-        selected_id = st.selectbox("Inspect Full Past Audit Details", [r["id"] for r in records])
-        if st.button("Load Historical Audit"):
-            hist_item = get_audit_by_id(selected_id)
-            if hist_item and hist_item.get("report_json"):
-                parsed_report_data = json.loads(hist_item["report_json"])
-                st.json(parsed_report_data)
+        with st.container(border=True):
+            st.markdown("#### 🔍 Historical Audit Detail Inspector")
+            selected_id = st.selectbox("Choose Past Audit ID", [r["id"] for r in records])
+            if st.button("Load Historical Audit"):
+                hist_item = get_audit_by_id(selected_id)
+                if hist_item and hist_item.get("report_json"):
+                    parsed_report_data = json.loads(hist_item["report_json"])
+                    st.json(parsed_report_data)
     else:
         st.info("No audit runs recorded yet. Check your first document in the Compliance Checker!")
 
@@ -541,28 +755,36 @@ elif nav_choice == "📊 Audit History":
 # ----------------------------------------------------------------------
 else:
     st.markdown("## ⚙️ System Settings & Environment Configuration")
-    st.markdown("Configure Gemini API keys, layout tolerances, and engine preferences.")
-
-    st.markdown("#### 1. Google Gemini AI Core Integration")
     st.markdown(
-        f"Active Model: `{GEMINI_MODEL}` • Powers Vision OCR for scanned PDFs, natural language syllabus parsing, and academic tone reviews."
+        "<p class='page-subtitle'>"
+        "Configure Gemini API keys, layout tolerances, and engine preferences."
+        "</p>",
+        unsafe_allow_html=True,
     )
 
-    col_k1, col_k2 = st.columns(2)
-    new_gemini_key = col_k1.text_input("Google Gemini API Key (Primary)", value=GEMINI_API_KEY, type="password")
-    new_openai_key = col_k2.text_input("OpenAI API Key (Optional Fallback)", value=OPENAI_API_KEY, type="password")
+    with st.container(border=True):
+        st.markdown("#### 1. Google Gemini AI Core Integration")
+        st.caption(
+            f"Active Model: `{GEMINI_MODEL}` • Powers Vision OCR for scanned PDFs, natural language syllabus parsing, and academic tone reviews."
+        )
 
-    st.markdown("#### 2. Layout & Physical Tolerances")
-    t_col1, t_col2 = st.columns(2)
-    tol_margin = t_col1.number_input("Margin Deviation Tolerance (inches)", value=DEFAULT_MARGIN_TOLERANCE_INCHES, step=0.05)
-    tol_font = t_col2.number_input("Font Size Deviation Tolerance (pt)", value=DEFAULT_FONT_SIZE_TOLERANCE_PT, step=0.25)
+        col_k1, col_k2 = st.columns(2)
+        new_gemini_key = col_k1.text_input("Google Gemini API Key (Primary)", value=GEMINI_API_KEY, type="password", help="Gemini API Key used for AI analysis")
+        new_openai_key = col_k2.text_input("OpenAI API Key (Optional Fallback)", value=OPENAI_API_KEY, type="password", help="Fallback key if Gemini is offline")
 
-    if st.button("Save System Preferences", type="primary"):
-        st.success("Preferences updated successfully!")
+    with st.container(border=True):
+        st.markdown("#### 2. Layout & Physical Tolerances")
+        st.caption("Define allowable margin and font deviations before compliance penalties are flagged.")
+        t_col1, t_col2 = st.columns(2)
+        tol_margin = t_col1.number_input("Margin Deviation Tolerance (inches)", value=DEFAULT_MARGIN_TOLERANCE_INCHES, step=0.05)
+        tol_font = t_col2.number_input("Font Size Deviation Tolerance (pt)", value=DEFAULT_FONT_SIZE_TOLERANCE_PT, step=0.25)
 
-    st.markdown("---")
-    st.markdown("#### 3. Diagnostic & Environment Information")
-    st.write(f"- **Application Workspace:** `{BASE_DIR}`")
-    st.write(f"- **SQLite Database:** `{DATABASE_PATH}`")
-    st.write(f"- **Built-in Rubric Templates:** `{len(get_builtin_rubrics())}`")
-    st.write(f"- **Sample Test Documents:** `{len(list(SAMPLES_DIR.glob('*.*')))}`")
+        if st.button("Save System Preferences", type="primary"):
+            st.success("Preferences updated successfully!")
+
+    with st.container(border=True):
+        st.markdown("#### 3. Diagnostic & Environment Information")
+        st.write(f"- **Application Workspace:** `{BASE_DIR}`")
+        st.write(f"- **SQLite Database:** `{DATABASE_PATH}`")
+        st.write(f"- **Built-in Rubric Templates:** `{len(get_builtin_rubrics())}`")
+        st.write(f"- **Sample Test Documents:** `{len(list(SAMPLES_DIR.glob('*.*')))}`")
