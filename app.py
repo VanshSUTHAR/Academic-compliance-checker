@@ -3,6 +3,7 @@
 High-trust, professional compliance auditing platform built with native Streamlit architecture.
 """
 
+import utils.session
 import importlib
 from io import BytesIO
 import json
