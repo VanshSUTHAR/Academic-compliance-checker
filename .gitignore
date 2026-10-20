@@ -5,7 +5,6 @@ __pycache__/
 .pytest_cache/
 
 # Environments & secrets
-.env
 venv/
 env/
 .venv/
@@ -17,3 +16,5 @@ env/
 # OS generated
 .DS_Store
 Thumbs.db
+config.bat
+node_modules
